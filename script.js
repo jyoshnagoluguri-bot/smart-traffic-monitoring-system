@@ -92,7 +92,7 @@ function analyzeVideo() {
     document.getElementById("status").innerHTML =
         "🚀 Uploading Video...";
 
-    fetch("http://localhost:5000/upload", {
+    fetch("/upload", {
         method: "POST",
         body: formData
     })
@@ -108,7 +108,7 @@ function analyzeVideo() {
         if (video) {
 
             video.src =
-                "http://localhost:5000/video?" +
+                "/video?" +
                 new Date().getTime();
 
             video.style.display = "block";
@@ -117,7 +117,7 @@ function analyzeVideo() {
         // LIVE ANALYTICS
         setInterval(() => {
 
-            fetch("http://localhost:5000/result")
+            fetch("/result")
             .then(res => res.json())
             .then(data => {
 
@@ -213,7 +213,7 @@ function openRoad() {
                 "<p class='loading'>🔄 Analyzing image...</p>";
         }
 
-        fetch("http://127.0.0.1:5000/analyze-road", {
+        fetch("/analyze-road", {
             method: "POST",
             body: formData
         })
