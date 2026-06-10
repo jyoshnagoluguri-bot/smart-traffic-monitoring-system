@@ -96,7 +96,7 @@ function analyzeVideo() {
         let video = document.getElementById("videoPlayer");
 
         if (video) {
-            video.src = "https://smart-traffic-monitoring-system-4.onrender.com/video?" + new Date().getTime();
+            video.src = "https://smart-traffic-monitoring-system-6.onrender.com/video?" + new Date().getTime();
             video.style.display = "block";
         }
 
