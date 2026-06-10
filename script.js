@@ -1,9 +1,7 @@
 // ================= OTP SYSTEM =================
 let generatedOTP;
 
-// SEND OTP
 function sendOTP() {
-
     let role = document.getElementById("role").value;
     let userId = document.getElementById("userId").value;
     let password = document.getElementById("password").value;
@@ -15,14 +13,10 @@ function sendOTP() {
     }
 
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
-
     alert("Your OTP is: " + generatedOTP);
 }
 
-
-// VERIFY OTP
 function verifyOTP() {
-
     let role = document.getElementById("role").value;
     let userId = document.getElementById("userId").value;
     let password = document.getElementById("password").value;
@@ -52,7 +46,6 @@ let vehicles = 0;
 let violations = 0;
 
 setInterval(() => {
-
     vehicles = Math.floor(Math.random() * 100);
     violations = Math.floor(Math.random() * 10);
 
@@ -76,7 +69,7 @@ setInterval(() => {
 }, 2000);
 
 
-// ================= CCTV VIDEO ANALYSIS =================
+// ================= CCTV VIDEO UPLOAD =================
 function analyzeVideo() {
 
     const file = document.getElementById("videoFile").files[0];
@@ -89,102 +82,47 @@ function analyzeVideo() {
     const formData = new FormData();
     formData.append("video", file);
 
-    document.getElementById("status").innerHTML =
-        "🚀 Uploading Video...";
+    document.getElementById("status").innerHTML = "🚀 Uploading Video...";
 
-    fetch("https://smart-traffic-monitoring-system-5.onrender.com/analyze-road", {
+    fetch("https://smart-traffic-monitoring-system-4.onrender.com/upload", {
         method: "POST",
         body: formData
     })
     .then(res => res.json())
-    .then(() => {
+    .then(data => {
 
-        document.getElementById("status").innerHTML =
-            "✅ Analysis Running";
+        document.getElementById("status").innerHTML = "✅ Analysis Running";
 
-        // VIDEO STREAM
         let video = document.getElementById("videoPlayer");
 
         if (video) {
-
-            video.src =
-                "/video?" +
-                new Date().getTime();
-
+            video.src = "https://smart-traffic-monitoring-system-4.onrender.com/video?" + new Date().getTime();
             video.style.display = "block";
         }
 
-        // LIVE ANALYTICS
         setInterval(() => {
 
-            fetch("/result")
+            fetch("https://smart-traffic-monitoring-system-4.onrender.com/result")
             .then(res => res.json())
             .then(data => {
 
-                // Violations
-                let vio =
-                    document.getElementById("vio");
+                document.getElementById("vio").innerText = data.violations || 0;
+                document.getElementById("veh").innerText = data.vehicle_count || 0;
 
-                if (vio)
-                    vio.innerText =
-                        data.violations || 0;
+                document.getElementById("ambulance").innerText =
+                    data.ambulance_alert ? "YES" : "NO";
 
-                let violationCount =
-                    document.getElementById("violationCount");
+                document.getElementById("trafficLevel").innerText =
+                    data.traffic_density || "LOW";
 
-                if (violationCount)
-                    violationCount.innerText =
-                        data.violations || 0;
-
-                // Vehicles
-                let veh =
-                    document.getElementById("veh");
-
-                if (veh)
-                    veh.innerText =
-                        data.vehicle_count || 0;
-
-                // Ambulance
-                let ambulance =
-                    document.getElementById("ambulance");
-
-                if (ambulance)
-                    ambulance.innerText =
-                        data.ambulance_alert
-                            ? "YES"
-                            : "NO";
-
-                // Traffic Density
-                let traffic =
-                    document.getElementById("trafficLevel");
-
-                if (traffic)
-                    traffic.innerText =
-                        data.traffic_density || "LOW";
-
-                // Vehicle Density
-                let density =
-                    document.getElementById("vehicleDensity");
-
-                if (density)
-                    density.innerText =
-                        data.vehicle_density || "LOW";
-
-            })
-            .catch(err => {
-                console.log(err);
             });
 
         }, 2000);
 
     })
     .catch(error => {
-
         console.log(error);
-
-        document.getElementById("status").innerHTML =
-            "❌ Backend Error - Check Flask Server";
-
+        document.getElementById("status").innerHTML = "❌ Upload Failed";
     });
 }
 
@@ -193,74 +131,47 @@ function analyzeVideo() {
 function openRoad() {
 
     let input = document.createElement("input");
-
     input.type = "file";
     input.accept = "image/*";
 
     input.onchange = function () {
 
         let file = this.files[0];
-
         let formData = new FormData();
-
         formData.append("image", file);
 
-        let box =
-            document.getElementById("resultBox");
-
+        let box = document.getElementById("resultBox");
         if (box) {
-            box.innerHTML =
-                "<p class='loading'>🔄 Analyzing image...</p>";
+            box.innerHTML = "<p>🔄 Analyzing image...</p>";
         }
 
-        fetch("/analyze-road", {
+        fetch("https://smart-traffic-monitoring-system-4.onrender.com/analyze-road", {
             method: "POST",
             body: formData
         })
         .then(res => res.json())
         .then(data => {
 
-            let html = "";
-
-            html += "<div class='result-card'>";
-
+            let html = "<div class='result-card'>";
             html += "<h3>🛣 Road Analysis Result</h3>";
-
-            html += "<p><b>Risk Level:</b> "
-                 + data.level +
-                 "</p>";
-
-            html += "<p><b>Score:</b> "
-                 + data.edge_score.toFixed(4) +
-                 "</p>";
+            html += "<p><b>Risk Level:</b> " + data.zone + "</p>";
+            html += "<p><b>Score:</b> " + data.edge_score.toFixed(4) + "</p>";
 
             html += "<h4>Suggestions</h4>";
 
             data.suggestions.forEach(s => {
-
-                html +=
-                    "<div class='suggestion'>• "
-                    + s +
-                    "</div>";
-
+                html += "<div class='suggestion'>• " + s + "</div>";
             });
 
             html += "</div>";
 
-            if (box)
-                box.innerHTML = html;
+            box.innerHTML = html;
 
         })
         .catch(err => {
-
             console.log(err);
-
-            if (box)
-                box.innerHTML =
-                    "❌ Error in image analysis";
-
+            box.innerHTML = "❌ Error in image analysis";
         });
-
     };
 
     input.click();
