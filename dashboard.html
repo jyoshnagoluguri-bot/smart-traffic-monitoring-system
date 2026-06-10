@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Smart Traffic Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;">
+
+            <div>
+                <h1>🚦 Smart Traffic Monitoring Dashboard</h1>
+                <p>AI Based Police Control System</p>
+            </div>
+
+            <!-- SETTINGS + LOGOUT -->
+            <div>
+                <button onclick="openSettings()">⚙️ Settings</button>
+                <button onclick="logout()">🚪 Logout</button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MAIN OPTIONS -->
+    <div class="main-box">
+
+        <!-- CCTV MODULE -->
+        <div class="card">
+            <h2>📹 CCTV AI Detection</h2>
+            <p>Vehicle, Helmet & Violation Detection</p>
+            <button onclick="openCCTV()">Start CCTV Analysis</button>
+        </div>
+
+        <!-- ROAD MODULE -->
+        <div class="card">
+            <h2>🛣 Road Analysis</h2>
+            <p>Blind Turns, Risky Junctions & Safety Suggestions</p>
+            <button onclick="openRoad()">Analyze Road Image</button>
+        </div>
+
+    </div>
+
+    <!-- RESULT AREA -->
+    <div id="resultBox">
+        <h2>📊 Analysis Results</h2>
+        <p>Results will appear here...</p>
+    </div>
+
+    <script>
+
+        // ================= CCTV =================
+        function openCCTV() {
+            window.location.href = "run_ai.html";
+        }
+
+        // ================= SETTINGS =================
+        function openSettings() {
+
+            let option = prompt(
+                "⚙️ SETTINGS\n\n" +
+                "1 - Dark Mode\n" +
+                "2 - Light Mode\n\n" +
+                "Enter Option:"
+            );
+
+            if(option === "1"){
+                document.body.style.background = "#1e1e1e";
+                document.body.style.color = "white";
+            }
+            else if(option === "2"){
+                document.body.style.background = "white";
+                document.body.style.color = "black";
+            }
+        }
+
+        // ================= LOGOUT =================
+        function logout() {
+
+            let confirmLogout = confirm("Are you sure you want to logout?");
+
+            if(confirmLogout){
+                window.location.href = "login.html";
+            }
+        }
+
+        // ================= ROAD ANALYSIS =================
+        function openRoad() {
+
+            let input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+
+            input.onchange = function () {
+
+                let file = this.files[0];
+
+                let formData = new FormData();
+                formData.append("image", file);
+
+                fetch("http://127.0.0.1:5000/analyze-road", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+
+                    let html = "<h3>🛣 Road Analysis Result</h3>";
+
+                    html += "<b>Road Risk Score:</b> " +
+                            data.edge_score.toFixed(4) +
+                            "<br><br>";
+
+                    html += "<b>Risk Zone:</b> " +
+                            data.risk_zone +
+                            "<br><br>";
+
+                    html += "<b>Suggestions:</b><br>";
+
+                    data.suggestions.forEach(s => {
+                        html += "• " + s + "<br>";
+                    });
+
+                    document.getElementById("resultBox").innerHTML = html;
+
+                })
+                .catch(err => {
+                    alert("Road Analysis Failed!");
+                    console.log(err);
+                });
+
+            };
+
+            input.click();
+        }
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Smart Traffic AI Live Monitoring</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>🚦 Smart Traffic AI Live Monitoring</h1>
+        <p>Real-Time CCTV Surveillance & Violation Detection</p>
+    </div>
+
+    <div class="cctv-container">
+
+        <div class="upload-box">
+
+            <input type="file" id="videoFile" accept="video/*">
+
+            <br>
+
+            <button onclick="uploadVideo()">
+                Start Live Detection
+            </button>
+
+            <h3 id="status">
+                Upload Video To Begin Analysis
+            </h3>
+
+        </div>
+
+        <div class="video-box">
+            <img
+                id="videoPlayer"
+                src=""
+                alt="Live CCTV Feed">
+        </div>
+
+        <div class="analytics">
+
+            <div class="analytics-card">
+                <h3>🚨 Violations</h3>
+                <p id="vio">0</p>
+            </div>
+
+            <div class="analytics-card">
+                <h3>🚗 Vehicle Count</h3>
+                <p id="veh">0</p>
+            </div>
+
+            <div class="analytics-card">
+                <h3>📈 Vehicle Density</h3>
+                <p id="vehicleDensity">LOW</p>
+            </div>
+
+            <div class="analytics-card">
+                <h3>🚦 Traffic Density</h3>
+                <p id="trafficLevel">LOW</p>
+            </div>
+
+            <div class="analytics-card">
+                <h3>🚑 Ambulance Alert</h3>
+                <p id="ambulance">NO</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        function uploadVideo() {
+
+            const file = document.getElementById("videoFile").files[0];
+
+            if (!file) {
+                alert("Please select a video first");
+                return;
+            }
+
+            document.getElementById("status").innerText =
+                "🚀 Uploading Video...";
+
+            let formData = new FormData();
+            formData.append("video", file);
+
+            fetch("http://localhost:5000/upload", {
+                method: "POST",
+                body: formData
+            })
+
+            .then(res => res.json())
+
+            .then(() => {
+
+                document.getElementById("status").innerText =
+                    "🔴 LIVE CCTV RUNNING";
+
+                document.getElementById("videoPlayer").src =
+                    "http://localhost:5000/video?" +
+                    new Date().getTime();
+
+                setInterval(() => {
+
+                    fetch("http://localhost:5000/result")
+
+                    .then(res => res.json())
+
+                    .then(data => {
+
+                        document.getElementById("vio").innerText =
+                            data.violations || 0;
+
+                        document.getElementById("veh").innerText =
+                            data.vehicle_count || 0;
+
+                        document.getElementById("vehicleDensity").innerText =
+                            data.vehicle_density || "LOW";
+
+                        document.getElementById("trafficLevel").innerText =
+                            data.traffic_density || "LOW";
+
+                        document.getElementById("ambulance").innerText =
+                            data.ambulance_alert ? "YES" : "NO";
+
+                    })
+
+                    .catch(err => console.log(err));
+
+                }, 2000);
+
+            })
+
+            .catch(err => {
+
+                console.log(err);
+
+                document.getElementById("status").innerText =
+                    "❌ Backend Error";
+
+            });
+
+        }
+
+    </script>
+
+</body>
+
+</html>
