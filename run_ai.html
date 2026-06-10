@@ -86,7 +86,7 @@
             let formData = new FormData();
             formData.append("video", file);
 
-            fetch("http://localhost:5000/upload", {
+            fetch("/upload", {
                 method: "POST",
                 body: formData
             })
@@ -99,12 +99,12 @@
                     "🔴 LIVE CCTV RUNNING";
 
                 document.getElementById("videoPlayer").src =
-                    "http://localhost:5000/video?" +
+                    "/video?" +
                     new Date().getTime();
 
                 setInterval(() => {
 
-                    fetch("http://localhost:5000/result")
+                    fetch("/result")
 
                     .then(res => res.json())
 
