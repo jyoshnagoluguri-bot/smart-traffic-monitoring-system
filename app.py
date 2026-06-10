@@ -281,18 +281,16 @@ def result():
 
 
 # ================= HOME =================
-@app.route('/')
-def login():
-    return send_from_directory("../", "login.html")
-
-
-@app.route('/<path:filename>')
-def static_files(filename):
-    return send_from_directory("../", filename)
-
 @app.route("/")
-def home():
-    return "Smart Traffic Monitoring System Running Successfully"
+def login():
+    return send_from_directory(".", "login.html")
+
+
+@app.route("/<path:filename>")
+def static_files(filename):
+    return send_from_directory(".", filename)
+
+
 
 
 if __name__ == "__main__":
