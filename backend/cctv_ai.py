@@ -2,12 +2,12 @@ from ultralytics import YOLO
 import cv2
 
 # ---------------- MODELS ----------------
-helmet_model = YOLO(r"C:\Users\jyosh\OneDrive\Desktop\helmet_project\runs\detect\train-4\weights\best.pt")
+helmet_model = YOLO("models/helmet.pt")
 
 # COCO pretrained vehicle model
-vehicle_model = YOLO("yolov8n.pt")
+vehicle_model = YOLO("models/yolov8n.pt")
 
-ambulance_model = YOLO(r"C:\Users\jyosh\Downloads\archive (1)\runs\detect\train\weights\best.pt")
+ambulance_model = YOLO("models/ambulance.pt")
 
 
 def process_video(input_path, output_path="output.mp4"):
