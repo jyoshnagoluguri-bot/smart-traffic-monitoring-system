@@ -92,7 +92,7 @@ function analyzeVideo() {
     document.getElementById("status").innerHTML =
         "🚀 Uploading Video...";
 
-    fetch("/upload", {
+    fetch("https://smart-traffic-monitoring-system-5.onrender.com/analyze-road", {
         method: "POST",
         body: formData
     })
