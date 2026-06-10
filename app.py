@@ -10,9 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # ---------------- MODELS ----------------
-helmet_model = YOLO(r"models\helmet.pt")
-vehicle_model = YOLO("models\yolov8n.pt")
-ambulance_model = YOLO(r"models\ambulance.pt")
+helmet_model = YOLO("models/helmet.pt")
+vehicle_model = YOLO("models/yolov8n.pt")
+ambulance_model = YOLO("models/ambulance.pt")
 
 video_path = "input.mp4"
 
