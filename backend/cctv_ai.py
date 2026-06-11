@@ -53,7 +53,7 @@ def process_video(input_path, output_path="output.mp4"):
                 label = helmet_model.names[cls].lower()
 
                 # violation logic (ONLY WITHOUT HELMET)
-                if "without" in label or "no helmet" in label:
+                if "without helmet" in label or "no helmet" in label:
                     frame_violations += 1
                     color = (0, 0, 255)
                 else:
