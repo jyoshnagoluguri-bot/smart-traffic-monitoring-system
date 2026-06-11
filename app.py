@@ -93,62 +93,122 @@ def upload():
 
 # ================= STREAM (SAFE) =================
 def gen_frames():
+    global violations, vehicle_count, ambulance_detected, processing_done, tracked_vehicles
 
-    global vehicle_count, violations, ambulance_detected, processing_done, tracked_vehicles
+    if not os.path.exists(video_path):
+        print("❌ Video not found:", video_path)
+        return
 
     cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():
-        print("❌ Video not opened")
+        print("❌ Cannot open video file")
         return
 
     while True:
         ret, frame = cap.read()
+
         if not ret:
-            break
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
 
-        # VEHICLE DETECTION
-        results = vehicle_model(frame, verbose=False)
+        # ---------------- VEHICLE DETECTION ----------------
+        vehicle_results = vehicle_model(frame, verbose=False)
+        current_centroids = []
 
-        centroids = []
-
-        if results and results[0].boxes is not None:
-            for box in results[0].boxes:
+        if vehicle_results and vehicle_results[0].boxes is not None:
+            for box in vehicle_results[0].boxes:
                 cls = int(box.cls[0])
                 label = vehicle_model.names[cls].lower()
 
                 if label in ["car", "bus", "truck", "motorcycle", "bicycle"]:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
+
                     cx = (x1 + x2) // 2
                     cy = (y1 + y2) // 2
-                    centroids.append((cx, cy))
 
-        # SIMPLE COUNT
-        vehicle_count = len(centroids)
+                    current_centroids.append((cx, cy))
 
-        # HELMET CHECK
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                    cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
+
+        # ---------------- TRACKING + COUNTING ----------------
+        for cx, cy in current_centroids:
+            matched = False
+
+            for vid in list(tracked_vehicles.keys()):
+                px, py, counted = tracked_vehicles[vid]
+                distance = math.hypot(cx - px, cy - py)
+
+                if distance < 40:
+                    tracked_vehicles[vid] = (cx, cy, counted)
+
+                    if not counted and cy > line_y:
+                        vehicle_count += 1
+                        tracked_vehicles[vid] = (cx, cy, True)
+
+                    matched = True
+                    break
+
+            if not matched:
+                new_id = len(tracked_vehicles) + 1
+                tracked_vehicles[new_id] = (cx, cy, False)
+
+        # ---------------- HELMET ----------------
         helmet_results = helmet_model(frame, verbose=False)
+        frame_violation = 0
 
-        violations = 0
         if helmet_results and helmet_results[0].boxes is not None:
             for box in helmet_results[0].boxes:
-                label = helmet_model.names[int(box.cls[0])].lower()
-                if "without" in label:
-                    violations += 1
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cls = int(box.cls[0])
+                conf = float(box.conf[0])
 
-        # AMBULANCE
+                label = helmet_model.names[cls].lower()
+
+                if "without" in label or "no helmet" in label:
+                    frame_violation += 1
+                    color = (0, 0, 255)
+                else:
+                    color = (0, 255, 0)
+
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(frame, f"{label} {conf:.2f}",
+                            (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6, color, 2)
+
+        violations = max(violations, frame_violation)
+
+        # ---------------- AMBULANCE ----------------
         amb = ambulance_model(frame, verbose=False)
-        ambulance_detected = amb and len(amb[0].boxes) > 0
 
-        # STREAM FRAME
+        if amb and amb[0].boxes is not None and len(amb[0].boxes) > 0:
+            ambulance_detected = True
+
+            cv2.putText(frame, "AMBULANCE DETECTED",
+                        (50, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 0, 255),
+                        3)
+
+        # ---------------- COUNT LINE ----------------
+        cv2.line(frame, (0, line_y), (frame.shape[1], line_y), (0, 255, 0), 2)
+
+        cv2.putText(frame, f"Vehicles: {vehicle_count}",
+                    (30, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 0),
+                    2)
+
+        # ---------------- STREAM ----------------
         _, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
 
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-    cap.release()
-    processing_done = True
 
 
 # ================= VIDEO =================
