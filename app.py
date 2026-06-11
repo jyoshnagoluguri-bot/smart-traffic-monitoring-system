@@ -1,11 +1,12 @@
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 import cv2
 from ultralytics import YOLO
 import math
 import numpy as np
+from flask import send_from_directory
 import os
-import time
+
 
 app = Flask(__name__)
 CORS(app)
@@ -15,23 +16,26 @@ helmet_model = YOLO("models/helmet.pt")
 vehicle_model = YOLO("models/yolov8n.pt")
 ambulance_model = YOLO("models/ambulance.pt")
 
-video_path = "input.mp4"
+video_path = "/tmp/input.mp4"
 
-# ---------------- GLOBALS ----------------
+# ---------------- GLOBAL STATS ----------------
 violations = 0
 vehicle_count = 0
 ambulance_detected = False
 processing_done = False
-tracked_vehicles = {}
-line_y = 400
+
+# ---------------- TRACKING DATA ----------------
+tracked_vehicles = {}   # id: (cx, cy, counted)
+line_y = 400            # change based on your video
 
 
-# ================= IMAGE ANALYSIS (UNCHANGED - SAFE) =================
+
+
 @app.route('/analyze-road', methods=['POST'])
 def analyze_road():
 
     if 'image' not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
+        return jsonify({"error": "No image uploaded"})
 
     file = request.files['image']
 
@@ -39,25 +43,72 @@ def analyze_road():
     img = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
 
     if img is None:
-        return jsonify({"error": "Invalid image"}), 400
+        return jsonify({"error": "Invalid image"})
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 50, 150)
 
     edge_density = np.sum(edges > 0) / (img.shape[0] * img.shape[1])
 
+    suggestions = []
+    zone = "🟢 SAFE ZONE"
+
     if edge_density < 0.01:
-        zone = "SAFE"
-        suggestions = ["Normal road"]
+
+        zone = "🟢 SAFE ZONE"
+
+        suggestions = [
+            "Straight road detected",
+            "Normal monitoring sufficient",
+            "Maintain existing road signs",
+            "Routine inspection recommended",
+            "Traffic flow appears safe"
+        ]
+
     elif edge_density < 0.03:
-        zone = "MODERATE"
-        suggestions = ["Add warnings"]
+
+        zone = "⚠️ MODERATE RISK ZONE"
+
+        suggestions = [
+            "Possible blind turn detected",
+            "Install warning boards",
+            "Add reflective road markers",
+            "Improve night visibility",
+            "Add speed limit signs",
+            "Monitor accident records"
+        ]
+
     elif edge_density < 0.06:
-        zone = "HIGH"
-        suggestions = ["Improve safety"]
+
+        zone = "🚧 HIGH RISK ZONE"
+
+        suggestions = [
+            "Complex junction likely",
+            "Install speed breakers",
+            "Add reflective lane markings",
+            "Install warning boards",
+            "Improve street lighting",
+            "Deploy CCTV monitoring",
+            "Optimize traffic signals",
+            "Add pedestrian crossings"
+        ]
+
     else:
-        zone = "VERY HIGH"
-        suggestions = ["Critical area"]
+
+        zone = "🚨 VERY HIGH RISK ZONE"
+
+        suggestions = [
+            "Accident-prone area detected",
+            "Install safety barriers",
+            "Deploy CCTV cameras",
+            "Install flashing warning lights",
+            "Add speed breakers",
+            "Place danger warning boards",
+            "Improve road markings",
+            "Increase police patrols",
+            "Create emergency response plan",
+            "Conduct road safety audit"
+        ]
 
     return jsonify({
         "edge_score": float(edge_density),
@@ -66,32 +117,29 @@ def analyze_road():
     })
 
 
-# ================= VIDEO UPLOAD FIX =================
+# ================= UPLOAD =================
 @app.route('/upload', methods=['POST'])
 def upload():
-    global video_path, vehicle_count, violations, ambulance_detected, processing_done, tracked_vehicles
+    global violations, vehicle_count, ambulance_detected, processing_done, tracked_vehicles, video_path
 
-    file = request.files.get('video')
+    if 'video' not in request.files:
+        return jsonify({"error": "No video received"}), 400
 
-    if not file or file.filename == '':
-        return jsonify({"error": "No video uploaded"}), 400
+    file = request.files['video']
 
-    video_path = "input.mp4"
+    video_path = "/tmp/input.mp4"
     file.save(video_path)
 
-    # reset system
-    vehicle_count = 0
     violations = 0
+    vehicle_count = 0
     ambulance_detected = False
     processing_done = False
     tracked_vehicles = {}
 
-    time.sleep(1)  # IMPORTANT for Render sync
-
     return jsonify({"status": "uploaded"})
 
 
-# ================= STREAM (SAFE) =================
+# ================= STREAM =================
 def gen_frames():
     global violations, vehicle_count, ambulance_detected, processing_done, tracked_vehicles
 
@@ -112,6 +160,9 @@ def gen_frames():
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             continue
 
+        # 🔥 SPEED FIX (IMPORTANT FOR RENDER)
+        frame = cv2.resize(frame, (640, 360))
+
         # ---------------- VEHICLE DETECTION ----------------
         vehicle_results = vehicle_model(frame, verbose=False)
         current_centroids = []
@@ -130,7 +181,6 @@ def gen_frames():
                     current_centroids.append((cx, cy))
 
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                    cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
 
         # ---------------- TRACKING + COUNTING ----------------
         for cx, cy in current_centroids:
@@ -173,10 +223,6 @@ def gen_frames():
                     color = (0, 255, 0)
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"{label} {conf:.2f}",
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6, color, 2)
 
         violations = max(violations, frame_violation)
 
@@ -185,7 +231,6 @@ def gen_frames():
 
         if amb and amb[0].boxes is not None and len(amb[0].boxes) > 0:
             ambulance_detected = True
-
             cv2.putText(frame, "AMBULANCE DETECTED",
                         (50, 50),
                         cv2.FONT_HERSHEY_SIMPLEX,
@@ -203,12 +248,22 @@ def gen_frames():
                     (255, 255, 0),
                     2)
 
-        # ---------------- STREAM ----------------
-        _, buffer = cv2.imencode('.jpg', frame)
+        # ---------------- STREAM (FAST + STABLE) ----------------
+        ret, buffer = cv2.imencode(
+            '.jpg',
+            frame,
+            [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+        )
+
+        if not ret:
+            continue
+
         frame_bytes = buffer.tobytes()
 
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+
 
 
 # ================= VIDEO =================
@@ -222,17 +277,25 @@ def video():
 @app.route('/result')
 def result():
 
+    if vehicle_count >= 15:
+        traffic_density = "HIGH"
+    elif vehicle_count >= 5:
+        traffic_density = "MEDIUM"
+    else:
+        traffic_density = "LOW"
+
     return jsonify({
+        "status": "DONE" if processing_done else "RUNNING",
         "violations": violations,
         "vehicle_count": vehicle_count,
-        "traffic_density": "HIGH" if vehicle_count > 10 else "LOW",
+        "traffic_density": traffic_density,
         "ambulance_alert": ambulance_detected
     })
 
 
 # ================= HOME =================
 @app.route("/")
-def home():
+def login():
     return send_from_directory(".", "login.html")
 
 
@@ -241,8 +304,13 @@ def static_files(filename):
     return send_from_directory(".", filename)
 
 
-# ================= RUN =================
+
+
+
+
+import os
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    print("🚀 Running on port", port)
-    app.run(host="0.0.0.0", port=port, debug=False)
+    print(f"🚀 Running on port {port}")
+    app.run(host="0.0.0.0", port=port)
