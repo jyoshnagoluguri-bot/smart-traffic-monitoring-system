@@ -19,15 +19,13 @@
 
             <input type="file" id="videoFile" accept="video/*">
 
-            <br>
+            <br><br>
 
             <button onclick="uploadVideo()">
                 Start Live Detection
             </button>
 
-            <h3 id="status">
-                Upload Video To Begin Analysis
-            </h3>
+            <h3 id="status">Upload Video To Begin Analysis</h3>
 
         </div>
 
@@ -70,6 +68,8 @@
 
         const BASE_URL = "https://smart-traffic-monitoring-system-4.onrender.com";
 
+        let intervalId = null;   // 🔥 FIX: prevent multiple loops
+
         function uploadVideo() {
 
             const file = document.getElementById("videoFile").files[0];
@@ -79,8 +79,7 @@
                 return;
             }
 
-            document.getElementById("status").innerText =
-                "🚀 Uploading Video...";
+            document.getElementById("status").innerText = "🚀 Uploading Video...";
 
             let formData = new FormData();
             formData.append("video", file);
@@ -94,50 +93,44 @@
 
             .then(() => {
 
-                document.getElementById("status").innerText =
-                    "🔴 LIVE CCTV RUNNING";
+                document.getElementById("status").innerText = "🔴 LIVE CCTV RUNNING";
 
+                // 🔥 FIX: reload stream properly
                 document.getElementById("videoPlayer").src =
-                    `${BASE_URL}/video?` + new Date().getTime();
+                    `${BASE_URL}/video?ts=` + new Date().getTime();
 
-                setInterval(() => {
+                // 🔥 FIX: clear old interval
+                if (intervalId) clearInterval(intervalId);
+
+                intervalId = setInterval(() => {
 
                     fetch(`${BASE_URL}/result`)
+                        .then(res => res.json())
+                        .then(data => {
 
-                    .then(res => res.json())
+                            document.getElementById("vio").innerText = data.violations || 0;
+                            document.getElementById("veh").innerText = data.vehicle_count || 0;
 
-                    .then(data => {
+                            // 🔥 FIX: backend doesn't send vehicle_density → use traffic_density
+                            document.getElementById("vehicleDensity").innerText =
+                                data.traffic_density || "LOW";
 
-                        document.getElementById("vio").innerText =
-                            data.violations || 0;
+                            document.getElementById("trafficLevel").innerText =
+                                data.traffic_density || "LOW";
 
-                        document.getElementById("veh").innerText =
-                            data.vehicle_count || 0;
+                            document.getElementById("ambulance").innerText =
+                                data.ambulance_alert ? "YES" : "NO";
 
-                        document.getElementById("vehicleDensity").innerText =
-                            data.vehicle_density || "LOW";
-
-                        document.getElementById("trafficLevel").innerText =
-                            data.traffic_density || "LOW";
-
-                        document.getElementById("ambulance").innerText =
-                            data.ambulance_alert ? "YES" : "NO";
-
-                    })
-
-                    .catch(err => console.log(err));
+                        })
+                        .catch(err => console.log("Result error:", err));
 
                 }, 2000);
 
             })
 
             .catch(err => {
-
                 console.log(err);
-
-                document.getElementById("status").innerText =
-                    "❌ Backend Error";
-
+                document.getElementById("status").innerText = "❌ Backend Error";
             });
 
         }
