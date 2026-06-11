@@ -18,7 +18,6 @@
                 <p>AI Based Police Control System</p>
             </div>
 
-            <!-- SETTINGS + LOGOUT -->
             <div>
                 <button onclick="openSettings()">⚙️ Settings</button>
                 <button onclick="logout()">🚪 Logout</button>
@@ -28,17 +27,15 @@
 
     </div>
 
-    <!-- MAIN OPTIONS -->
+    <!-- MAIN BOX -->
     <div class="main-box">
 
-        <!-- CCTV MODULE -->
         <div class="card">
             <h2>📹 CCTV AI Detection</h2>
             <p>Vehicle, Helmet & Violation Detection</p>
             <button onclick="openCCTV()">Start CCTV Analysis</button>
         </div>
 
-        <!-- ROAD MODULE -->
         <div class="card">
             <h2>🛣 Road Analysis</h2>
             <p>Blind Turns, Risky Junctions & Safety Suggestions</p>
@@ -47,13 +44,15 @@
 
     </div>
 
-    <!-- RESULT AREA -->
+    <!-- RESULT BOX -->
     <div id="resultBox">
         <h2>📊 Analysis Results</h2>
         <p>Results will appear here...</p>
     </div>
 
     <script>
+
+        const BASE_URL = "https://smart-traffic-monitoring-system-4.onrender.com";
 
         // ================= CCTV =================
         function openCCTV() {
@@ -70,11 +69,11 @@
                 "Enter Option:"
             );
 
-            if(option === "1"){
+            if (option === "1") {
                 document.body.style.background = "#1e1e1e";
                 document.body.style.color = "white";
             }
-            else if(option === "2"){
+            else if (option === "2") {
                 document.body.style.background = "white";
                 document.body.style.color = "black";
             }
@@ -83,9 +82,7 @@
         // ================= LOGOUT =================
         function logout() {
 
-            let confirmLogout = confirm("Are you sure you want to logout?");
-
-            if(confirmLogout){
+            if (confirm("Are you sure you want to logout?")) {
                 window.location.href = "login.html";
             }
         }
@@ -104,7 +101,10 @@
                 let formData = new FormData();
                 formData.append("image", file);
 
-                fetch("http://127.0.0.1:5000/analyze-road", {
+                document.getElementById("resultBox").innerHTML =
+                    "<p>🔄 Analyzing image...</p>";
+
+                fetch(`${BASE_URL}/analyze-road`, {
                     method: "POST",
                     body: formData
                 })
@@ -114,12 +114,12 @@
                     let html = "<h3>🛣 Road Analysis Result</h3>";
 
                     html += "<b>Road Risk Score:</b> " +
-                            data.edge_score.toFixed(4) +
-                            "<br><br>";
+                        data.edge_score.toFixed(4) +
+                        "<br><br>";
 
                     html += "<b>Risk Zone:</b> " +
-                            data.risk_zone +
-                            "<br><br>";
+                        data.zone +
+                        "<br><br>";
 
                     html += "<b>Suggestions:</b><br>";
 
@@ -131,8 +131,9 @@
 
                 })
                 .catch(err => {
-                    alert("Road Analysis Failed!");
                     console.log(err);
+                    document.getElementById("resultBox").innerHTML =
+                        "❌ Road Analysis Failed!";
                 });
 
             };
