@@ -32,10 +32,7 @@
         </div>
 
         <div class="video-box">
-            <img
-                id="videoPlayer"
-                src=""
-                alt="Live CCTV Feed">
+            <img id="videoPlayer" src="" alt="Live CCTV Feed">
         </div>
 
         <div class="analytics">
@@ -71,6 +68,8 @@
 
     <script>
 
+        const BASE_URL = "https://smart-traffic-monitoring-system-4.onrender.com";
+
         function uploadVideo() {
 
             const file = document.getElementById("videoFile").files[0];
@@ -86,7 +85,7 @@
             let formData = new FormData();
             formData.append("video", file);
 
-            fetch("/upload", {
+            fetch(`${BASE_URL}/upload`, {
                 method: "POST",
                 body: formData
             })
@@ -99,12 +98,11 @@
                     "🔴 LIVE CCTV RUNNING";
 
                 document.getElementById("videoPlayer").src =
-                    "/video?" +
-                    new Date().getTime();
+                    `${BASE_URL}/video?` + new Date().getTime();
 
                 setInterval(() => {
 
-                    fetch("/result")
+                    fetch(`${BASE_URL}/result`)
 
                     .then(res => res.json())
 
